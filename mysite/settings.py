@@ -32,9 +32,9 @@ if env_path.exists():
 SECRET_KEY = 'django-insecure-1x244^r%1wg+j9$lt)bs!t3vpg&d!b__o2y2b1)q=(!v3wis2#'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = True  # 사실 웹서버에서 돌릴 때 보안을 위해서 반드시 False로 해줘야 한다고 합니다.
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']  # 웹서버를 통해 구동할 땐 웹서버의 IP를 넣어줘야 합니다. 원활한 구동을 위해 '*'으로 설정했습니다.
 
 
 # Application definition

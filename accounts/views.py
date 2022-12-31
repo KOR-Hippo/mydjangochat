@@ -29,7 +29,6 @@ logout = LogoutView.as_view(
 )
 
 
-# 프로필 뷰 호출은 로그인 시에만 의미가 있습니다.
 class ProfileView(LoginRequiredMixin, TemplateView):
     template_name = "accounts/profile.html"
 

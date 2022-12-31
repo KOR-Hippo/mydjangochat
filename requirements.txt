@@ -1,19 +1,26 @@
+# coding: utf-8
+# 위에 걸 안적고 pip install -r requirements.txt 하니까 오류가 떠서 곤란했었습니다 ;;
+
+# 장고 프레임워크
 django~=4.1.0
-
-channels[daphne]~=4.0.0
-
-channels_redis~=4.0.0
-
-redis!=4.4.0
-
 django-environ
-
 django-bootstrap5
 
+# 채널스 + Redis 백엔드 라이브러리
+channels[daphne]~=4.0.0
+channels_redis~=4.0.0
+
+
+# Redis 라이브러리, 최신버전인 4.4.0 버전으로 하면 오류가 나서 이전 버전이어야 합니다
+redis!=4.4.0
+
+# HTTP 클라이언트 라이브러리
 requests
 
+# HTTP 파싱
 beautifulsoup4
 
+# 테스트
 pytest
 pytest-django
 pytest-testdox

@@ -14,17 +14,12 @@
 
 {% block extra-body %}
 <script>
-    // 주의: 이는 웹소켓 처리에 대한 Vanilla JS 예시일 뿐입니다.
-    // 사용하시는 프론트엔드 기술에 따라 다양한 형태의 구현이 있을 수 있습니다.
     const handlers = {
         ws: null,
         retry: 0,
         connect(ws_url) {
-            // WebSocket 객체 생성 시마다 지정 주소로 재접속 시도.
-            this.ws = new WebSocket(ws_url || this.ws?.url);  // 지정 주소로 웹소켓 연결을 시도합니다.
+            this.ws = new WebSocket(ws_url || this.ws?.url);  // 지정 주소로 웹소켓 연결 시도
 
-            // 각 WebSocket에서 발생한 이벤트에 대한 이벤트리스너의 this가 WebSocket 인스턴스입니다.
-            // 일관되게 this를 handlers object로 가져갑니다.
             this.ws.onopen = this.onopen.bind(this);
             this.ws.onclose = this.onclose.bind(this);
             this.ws.onerror = this.onerror.bind(this);
@@ -88,8 +83,7 @@
                         .insertAdjacentHTML("afterbegin", html)
                 });
         },
-        // post_partial_url로부터 받은 HTML 응답으로 지정 data-post-id 속성값을 가지는 DOM을 업데이트합니다.
-        // 서버에서 HTML을 만들어서 전송해주므로, 이 역시 SSR (Server Side Rendering)
+
         post_updated(post_id, post_partial_url) {
             fetch(post_partial_url)
                 .then(response => {
@@ -100,7 +94,7 @@
                     document.querySelector(css_selector).outerHTML = html;
                 });
         },
-        // 지정 data-post-id 속성값을 가지는 DOM을 삭제합니다.
+
         post_deleted(post_id) {
             const css_selector = `[data-post-id="${post_id}"]`;
             document.querySelector(css_selector).remove();
