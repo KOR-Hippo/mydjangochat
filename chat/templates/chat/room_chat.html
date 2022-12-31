@@ -1,0 +1,180 @@
+{% extends "chat/base.html" %}
+
+{% block extra-style %}
+<style>
+.chat-message > div {
+    background-color:  #0000FF;
+    color:  #FFFFFF;
+    border-radius: 0.3em;
+    padding: 0.4em;
+    margin: 0.4em 0;
+    display: inline-block;
+    white-space: pre-wrap;
+    max-width: 75%;
+    word-wrap: break-word;
+}
+.chat-message.me {
+    text-align: right;
+}
+.chat-message.me > div {
+    background-color: #1f8cff;
+    color: #fff;
+    text-align: left;
+}
+
+</style>
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container my-5">
+    <div class="row">
+        <div class="col-sm-12">
+            <div class="card" style="height: 600px;">
+                <div class="card-header">
+                    채팅방 : {{ room.name }}
+                </div>
+                <div class="card-body overflow-hidden">
+                    <div id="chat_messages" class="w-100 h-100 border-0 overflow-scroll"></div>
+                </div>
+                <div class="card-footer">
+                    <form id="message_form">
+                        <input type="text" name="message" class="form-control"
+                               autofocus autocomplete="off" />
+                    </form>
+                </div>
+            </div>
+
+            <hr class="my-3" >
+
+            <a href="{% url 'chat:index' %}" class="btn btn-primary">대기실로 이동</a>
+            <a href="{% url 'chat:index' %}" class="btn btn-primary">대기실로 이동</a>
+            <a href="{% url 'chat:index' %}" class="btn btn-primary">한국어로 번역?</a>
+            <a href="{% url 'chat:index' %}" class="btn btn-primary">페이지 닫기</a>
+
+            {% if request.user == room.owner %}
+                <a href="{% url 'chat:room_delete' room.pk %}" class="btn btn-danger">   {# 빨간 버튼 #}
+                    채팅방 삭제하기
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra-script %}
+<script>
+const handlers = {
+    chat_messages_tag: null,
+    ws: null,
+    retry: 0,
+
+    // 초기화
+    init() {
+        this.chat_messages_tag = document.querySelector("#chat_messages");
+        document.querySelector("#message_form").addEventListener("submit", this.onsubmit.bind(this));
+    },
+    // 이전 웹소켓 구현과 거의 동일
+    connect(ws_url) {
+        if(this.ws) { this.ws.close(); } // 웹소켓 재연결 시에 명시적으로 연결을 닫습니다.
+
+        // 지정 주소로 웹소켓 연결을 시도합니다.
+        this.ws = new WebSocket(ws_url || this.ws?.url);
+
+        // 각 WebSocket 이벤트리스너의 this가 WebSocket이기에 이를 변경
+        this.ws.onopen = this.onopen.bind(this);
+        this.ws.onclose = this.onclose.bind(this);
+        this.ws.onerror = this.onerror.bind(this);
+        this.ws.onmessage = this.onmessage.bind(this);
+    },
+    reconnect() { this.connect(); },
+
+    // 웹소켓 : onmessage를 제외한 구현이 동일
+    onopen() { console.log("웹소켓 서버와 접속"); this.retry = 0; },
+    onclose(event) {
+        if(!event.wasClean) {
+            console.error("웹소켓 서버가 죽었거나, 네트워크 장애입니다.");
+            if( this.retry < 3 ) {
+                this.retry += 1;
+                setTimeout(() => {
+                    this.reconnect();
+                    console.log(`[${this.retry}] 접속 재시도 .`);
+                    }, 1000 * this.retry);
+            }
+            else {
+                console.log("웹소켓 서버에 접속할 수 없습니다. 대기실로 이동합니다.");
+                window.location.href = "{% url 'chat:index' %}";
+            }
+        }
+    },
+    onerror() {
+        console.log("웹소켓 에러가 발생했습니다. 대기실로 이동합니다.");
+        window.location.href = "{% url 'chat:index' %}";
+    },
+    onmessage(event) {
+        const message_json = event.data;
+        console.log("메세지 수신 :", message_json);
+
+        const { type, message, sender } = JSON.parse(message_json);
+        // 메세지 타입에 따라 분기
+        switch(type) {
+            case "chat.message":
+                this.append_message(message, sender);
+                break;
+            default:
+                console.error(`Invalid message type : ${type}`);
+        }
+    },
+
+
+    // 채팅 메세지 로그 창 끝에 새로운 메세지를 추가
+    append_message(message, sender) {
+        const element = document.createElement("div");
+        element.className = "chat-message";  // 메세지 스타일링 목적
+
+        let footer = "";
+        if (sender === "{{ user.username }}") {
+            element.className += " me";
+        }
+        else if (sender){
+            footer = ` from ${sender}`;
+        }
+
+        const wrapper = document.createElement("div");
+        wrapper.textContent = message + footer;
+        element.appendChild(wrapper);
+
+        this.chat_messages_tag.appendChild(element);
+        this.chat_messages_tag.scrollTop = this.chat_messages_tag.scrollHeight;  // scroll to the bottom
+    },
+    // 채팅 메세지 입력폼에 대한 submit 이벤트 핸들러
+    onsubmit(event) {
+        event.preventDefault(); // submit 기본 동작을 무시
+
+        const form_data = new FormData(event.target);
+        const props = Object.fromEntries(form_data)
+        event.target.reset(); // reset form
+
+        const { message } = props;
+        console.log("웹소켓으로 전송할 메세지 :", message);
+
+        // this.append_message(message);
+        // 유저가 입력한 채팅 메세지를 채널스로 전달
+        // ➡ ChatConsumer의 receive/receive_json 메서드에서 수신
+        this.ws.send(JSON.stringify({
+        type: "chat.message",
+        message: message,
+        }))
+    },
+};
+
+handlers.init();
+
+const protocol = location.protocol === "http:" ? "ws:" : "wss:";
+{# chat/urls.py 상의 room_chat 경로에 "ws/"를 붙여 chat/routers.py 상의 주소를 맞춰두었습니다. #}
+const ws_url = protocol + "//" + location.host + "/ws" + location.pathname;
+handlers.connect(ws_url);
+</script>
+{% endblock %}
